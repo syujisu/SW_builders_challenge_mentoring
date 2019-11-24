@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <script src="https://code.jquery.com/jquery-3.4.1.js" integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU=" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+
+    <script>
+        var __tour = window.__tour || (function(){
+            let _CONF = {
+                API_URL : 'http://api.visitkorea.or.kr/openapi/service/rest/KorService/areaBasedList?ServiceKey=41aM%2F%2Bma%2FM9r6SpCozclX%2FhmFZCU2%2FTw2Up0zobH4NNH94R%2FxNQPKIlFpK7Lh6ZSFIdRf%2B%2B4yfw3CoLoqd2MCQ%3D%3D',
+                AUTH_KEY : "",
+                MOBILE_OS : "ETC",
+                MOBILE_APP : "APP_TEST",
+                LIST_YN : 'Y',
+                ARRANGE : 'A',
+            }
+
+            let _mod = {
+                PAGING : {
+                    CURRENT_PAGE : 1,
+                    NUM_OF_ROWS : 10,
+                },
+                CONTENT_TYPE_ID : 12,
+                AREA_CODE : 4,
+                SIGUNGU_CODE : 4,
+                CATEGORY_1 : -1,
+                CATEGORY_2 : -1,
+                CATEGORY_3 : -1,
+            }
+
+            let _areaCode = {
+                get : function(areaCode){
+                    let opt = {
+                        numOfRows : 999,
+                        pageNo : 1,
+                        MobileOS : "ETC",
+                        MobileApp : "APPTEST"
+                    };
+                    
+                    if(areaCode){ opt['areaCode'] = areaCode; }
+                    return $.ajax({
+                        url : "http://api.visitkorea.or.kr/openapi/service/rest/KorService/areaCode?ServiceKey=41aM%2F%2Bma%2FM9r6SpCozclX%2FhmFZCU2%2FTw2Up0zobH4NNH94R%2FxNQPKIlFpK7Lh6ZSFIdRf%2B%2B4yfw3CoLoqd2MCQ%3D%3D",
+                        method : "GET",
+                        data : opt
+                    });
+                },
+                bind : function(res , parent_id){
+                    return new Promise((resolve , reject)=>{
+                        // console.log(res);
+                        let __parsed_html = $(res);
+                        let __result = __parsed_html.find("header resultCode");
+                        
+                        if(__result.text() === "0000"){
+                            if(parent_id !== "inputAreaCode"){
+                                $("#" + parent_id).children().remove();
+                            }
+
+                            let __items = __parsed_html.find("item");
+                            let __parent = $('#' + parent_id);
+                            __items.map((idx , item )=>{
+                                item = $(item);
+                                let _code = Number(item.find('code').text());
+                                let _name = item.find("name").text();
+                                let _elem = $('<option></option>');
+                                _elem.attr("value" , _code);
+                                _elem.text(_name);
+                                __parent.append(_elem);
+                            });
+
+                            resolve(__parent);
+                        }
+                        else{
+                            console.log("ERROR");
+                            reject();
+                        }
+
+
+                    });
+                },
+                change : function(){
+                    let _current_areaCode = $('#inputAreaCode').val();
+                    _areaCode.get(_current_areaCode)
+                    .then(function(res){
+                        return _areaCode.bind(res , "inputAreaDetailCode");
+                    })
+                }
+            }
+
+            let _info = {
+                load : function(){
+                    return $.ajax({
+                        url : _CONF.API_URL,
+                        method : 'GET',
+                        crossDomain : true,
+                        data : {
+                            "numOfRows" : _mod.PAGING.NUM_OF_ROWS,
+                            "pageNo" : _mod.PAGING.CURRENT_PAGE,
+                            "MobileOS" : _CONF.MOBILE_OS,
+                            "MobileApp" : _CONF.MOBILE_APP,
+                            "listYN" : _CONF.LIST_YN,
+                            "arrange" : _CONF.ARRANGE ,
+                            "contentTypeId" : _mod.CONTENT_TYPE_ID,
+                            "areaCode" : _mod.AREA_CODE,
+                            "sigunguCode" : _mod.SIGUNGU_CODE,
+                        }
+                    });
+                },
+                bind : function(res){
+                    return new Promise((resolve , reject)=>{
+                        // console.log(res);
+                        let __parsed_html = $(res);
+                        let __result = __parsed_html.find("header resultCode");
+                        
+                        if(__result.text() === "0000"){
+                            console.log(res);
+                            let __items = __parsed_html.find("item");
+                            let __parent = $('#resultTable tbody');
+                            __parent.children().remove();
+                            __items.map((idx , item )=>{
+                                item = $(item);
+                                let contentid = item.find('contentid').text();
+                                let title = item.find("title").text();
+                                let firstimage = item.find('firstimage').text();
+                                let addr = item.find("addr1").text();
+                                let readcount = item.find("readcount").text();
+                                
+                                let row = $('<tr></tr>');
+                                row.append("<th>"+contentid+"</th>");
+                                row.append("<td>"+title+"</td>");
+                                row.append("<td>"+addr+"</td>");
+                                // row.append("<td>"+firstimage+"</td>");
+                                if(firstimage.trim() !== ""){
+                                    row.append("<td><img style='width : 300px' src='"+ firstimage +"' /></td>");
+                                }
+                                else{
+                                    row.append("<td>이미지없음</td>");
+                                }
+                                row.append("<td>"+readcount+"</td>");
+                                
+                                __parent.append(row);
+                            });
+
+                            let tot_cnt = Number(__parsed_html.find('totalCount').text());
+                            let max_page = Math.ceil(tot_cnt / _mod.PAGING.NUM_OF_ROWS);
+                            let paging_parent = $("#pagination");
+                            paging_parent.children().remove();
+
+                            for(var i = 1 ; i <= max_page; i++){
+                                let _page_item = $("<li class='page-item'></li>");
+                                let _btn = $("<button type='button' class='page-link'></button>");
+                                _btn.text(i);
+                                _btn.attr("onclick" , "__tour.page.go("+i+")");
+                                if(_mod.PAGING.CURRENT_PAGE === i){
+                                    _page_item.addClass("active");
+                                }
+                                _page_item.append(_btn);
+                                paging_parent.append(_page_item);
+                            }
+
+                            resolve(__parent);
+                        }
+                        else{
+                            console.log("ERROR");
+                            reject();
+                        }
+                    });
+                },
+                init : function(){
+
+                }
+            }
+
+            return {
+                load : function(){
+                    _mod.CONTENT_TYPE_ID = $("#inputContentTypeId").val();
+                    _mod.AREA_CODE = $("#inputAreaCode").val();
+                    _mod.SIGUNGU_CODE = $("#inputAreaDetailCode").val();
+                    if(_mod.SIGUNGU_CODE.trim() === ""){
+                        alert("시군구 코드가 잘못 되었습니다!");
+                        return;
+                    }
+                    
+                    _info.load()
+                    .then(_info.bind);
+                },
+                init : function(){
+                    _areaCode.get()
+                    .then(function(res){
+                        return _areaCode.bind(res , "inputAreaCode");
+                    })
+                    .then(function(){
+                        return _areaCode.get(1);
+                    })
+                    .then(function(res){
+                        return _areaCode.bind(res , "inputAreaDetailCode");
+                    });
+                },
+                areaCode : {
+                    change : function(){
+                        _areaCode.change();
+                    }
+                },
+                page : {
+                    go : function(page){
+                        _mod.PAGING.CURRENT_PAGE = page;
+                        __tour.load();
+                    }
+                }
+            }
+        })()
+
+        $(document).ready(function(){
+            __tour.init();
+        })
+    </script>
+</head>
+<body>
+<div class="container">
+    <h1>지역 기반 관광 정보 조회</h1>
+    <hr>
+    <div class="form-row">
+        <div class="form-group col-4">
+            <label for="inputContentTypeId">관광 타입</label>
+            <select class='form-control' name="inputContentTypeId" id="inputContentTypeId">
+                <option value="12">관광지</option>
+                <option value="14">문화시설</option>
+                <option value="15">축제/공연/행사</option>
+                <option value="25">여행코스</option>
+                <option value="28">레포츠</option>
+                <option value="32">숙박</option>
+                <option value="38">쇼핑</option>
+                <option value="39">음식</option>
+            </select>
+        </div>
+        <div class="form-group col-4">
+            <label for="inputAreaCode">지역 코드</label>
+            <select name="inputAreaCode" id="inputAreaCode" class="form-control" onchange="__tour.areaCode.change()">
+            </select>
+        </div>
+        <div class="form-group col-4">
+            <label for="inputAreaDetailCode">시군구 코드</label>
+            <select name="inputAreaDetailCode" id="inputAreaDetailCode" class="form-control">
+            </select>
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="col-4">
+            <button type='button' class="btn btn-lg btn-success" onclick="__tour.load()">검색하기</button>
+        </div>
+        <div class="col-8">
+
+        </div>
+    </div>
+    <div class="table-container mt-3">
+        <table class="table" id="resultTable">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">제목</th>
+                    <th scope="col">주소</th>
+                    <th scope="col">이미지</th>
+                    <th scope="col">조회수</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            </tbody>
+        </table>
+    </div>
+    <div class="row">
+        <div class="col-auto">
+            <nav aria-label="Page navigation example ">
+                <ul class="pagination" id="pagination">
+                    <!-- <li class="page-item">
+                        <button type='button' class="page-link" onclick="__tour.page.go()">1</button>
+                    </li>
+                    <li class="page-item">
+                        <button type='button' class="page-link" onclick="__tour.page.go()">2</button>
+                    </li>
+                    <li class="page-item">
+                        <button type='button' class="page-link" onclick="__tour.page.go()">3</button>
+                    </li>
+                    <li class="page-item">
+                        <button type='button' class="page-link" onclick="__tour.page.go()">4</button>
+                    </li>
+                                 -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
